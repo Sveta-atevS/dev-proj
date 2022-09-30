@@ -1,0 +1,14 @@
+Server_name: Dev_proj
+env: dev
+
+vpc_name: dev-app-vpc
+network: 10.1.0.0/16
+subset_public: 10.1.0.0/24
+env_name: dev-app
+zone: eu-central-1a
+
+keypair: dev-key
+
+aws_centos_ami:
+server_type: t2.micro
+server_volume_size: 8
