@@ -1,68 +1,29 @@
+Description:  Sysadmin Tutorials - Build Linux Web Server
 Parameters:
-  KeyPairName:
-    Description: >-
-      Mandatory. Enter a Public/private key pair. If you do not have one in this region,
-      please create it before continuing
-    Type: 'AWS::EC2::KeyPair::KeyName'
-  EnvType:
-    Description: Environment Name
-    Default: dev
-    Type: String
-    AllowedValues:  [dev, test, prod]
-  Subnet1ID:
-    Description: 'ID of the subnet 1 for auto scaling group into'
-    Type: 'AWS::EC2::Subnet::Id'
-  Subnet2ID:
-    Description: 'ID of the subnet 2 for auto scaling group'
-    Type: 'AWS::EC2::Subnet::Id'
-  Subnet3ID:
-    Description: 'ID of the subnet 3 for auto scaling group'
-    Type: 'AWS::EC2::Subnet::Id'
-
+  LatestAmiId:
+    Description: AMI Linux EC2 
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
 Resources:
-  AppMainLogGroup:
-    Type: 'AWS::Logs::LogGroup'
-  SSHMetricFilter:
-    Type: 'AWS::Logs::MetricFilter'
+  webserver1:
+    Type: AWS::EC2::Instance
     Properties:
-      LogGroupName: !Ref AppMainLogGroup
-      FilterPattern: ON FROM USER PWD
-      MetricTransformations:
-        - MetricName: SSHCommandCount
-          MetricValue: 1
-          MetricNamespace: !Join
-            - /
-            - - AWSQuickStart
-              - !Ref 'AWS::StackName'
-  AppAutoScalingGroup:
-    Type: 'AWS::AutoScaling::AutoScalingGroup'
-    Properties:
-      LaunchConfigurationName: !Ref AppLaunchConfiguration
-      AutoScalingGroupName:  !Join
-            - '.'
-            - - !Ref 'AWS::StackName'
-              - 'ASG'
-      VPCZoneIdentifier:
-        - !Ref Subnet1ID
-        - !Ref Subnet2ID
-        - !Ref Subnet3ID
-      MinSize: 1
-      MaxSize: 1
-      Cooldown: '300'
-      DesiredCapacity: 1
+      InstanceType: "t2.micro"
+      ImageId: !Ref LatestAmiId
+      SecurityGroupIds: 
+        - !Ref WebserverSecurityGroup
       Tags:
         - Key: Name
-          Value: 'The Name'
-          PropagateAtLaunch: 'true'
-  XYZLaunchConfiguration:
-    Type: 'AWS::AutoScaling::LaunchConfiguration'
+          Value: webserver1
+  WebserverSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
     Properties:
-      AssociatePublicIpAddress: 'false'
-      PlacementTenancy: default
-      KeyName: !Ref KeyPairName
-      ImageId: ami-123432164a1b23da1
-      IamInstanceProfile: "BaseInstanceProfile"
-      InstanceType: t2.small
-
-      SecurityGroups:
-        - Fn::If: [CreateDevResources, !Ref DevSecurityGroup, !Ref "AWS::NoValue"]
+      GroupDescription: Enable Port 80
+      Tags:
+      - Key: Name
+        Value: webserver-sg
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
