@@ -1,51 +1,68 @@
-Description: Linux Web Server
 Parameters:
-  LatestAmiId:
-    Description: AMI Linux EC2 
-    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
-    Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
+  KeyPairName:
+    Description: >-
+      Mandatory. Enter a Public/private key pair. If you do not have one in this region,
+      please create it before continuing
+    Type: 'AWS::EC2::KeyPair::KeyName'
+  EnvType:
+    Description: Environment Name
+    Default: dev
+    Type: String
+    AllowedValues:  [dev, test, prod]
+  Subnet1ID:
+    Description: 'ID of the subnet 1 for auto scaling group into'
+    Type: 'AWS::EC2::Subnet::Id'
+  Subnet2ID:
+    Description: 'ID of the subnet 2 for auto scaling group'
+    Type: 'AWS::EC2::Subnet::Id'
+  Subnet3ID:
+    Description: 'ID of the subnet 3 for auto scaling group'
+    Type: 'AWS::EC2::Subnet::Id'
+
 Resources:
-  webserver1:
-    Type: AWS::EC2::Instance
+  AppMainLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+  SSHMetricFilter:
+    Type: 'AWS::Logs::MetricFilter'
     Properties:
-      InstanceType: "t2.micro"
-      ImageId: !Ref LatestAmiId
-      SecurityGroupIds: 
-        - !Ref WebserverSecurityGroup
+      LogGroupName: !Ref AppMainLogGroup
+      FilterPattern: ON FROM USER PWD
+      MetricTransformations:
+        - MetricName: SSHCommandCount
+          MetricValue: 1
+          MetricNamespace: !Join
+            - /
+            - - AWSQuickStart
+              - !Ref 'AWS::StackName'
+  AppAutoScalingGroup:
+    Type: 'AWS::AutoScaling::AutoScalingGroup'
+    Properties:
+      LaunchConfigurationName: !Ref AppLaunchConfiguration
+      AutoScalingGroupName:  !Join
+            - '.'
+            - - !Ref 'AWS::StackName'
+              - 'ASG'
+      VPCZoneIdentifier:
+        - !Ref Subnet1ID
+        - !Ref Subnet2ID
+        - !Ref Subnet3ID
+      MinSize: 1
+      MaxSize: 1
+      Cooldown: '300'
+      DesiredCapacity: 1
       Tags:
         - Key: Name
-          Value: my_server
-      UserData:
-        Fn::Base64: !Sub |
-          #!/bin/bash -xe
-          yum update -y
-          yum install httpd -y
-          service httpd start
-          chkconfig httpd on
-          cd /var/www/html
-         # echo "<br>" >> index.html
-         # echo "<h2><b>Sysadmintutorials EC2 Linux Demo</b></h2>" >>index.html
-         # echo "<b>Your Server Hostname is:</b>" >> index.html
-         # curl http://169.254.169.254/latest/meta-data/public-hostname >> index.html
-         # echo "<br>" >> index.html
-         # echo "<b>Your Instance Type is:</b>" >> index.html
-         # curl http://169.254.169.254/latest/meta-data/instance-type >> index.html
-         # echo "<br>" >> index.html
-         # echo "<b>Your Internal IP Address is:</b> " >> index.html
-         # curl http://169.254.169.254/latest/meta-data/local-ipv4 >> index.html
-         # echo "<br><b> Your External IP Address is: </b>"$'\r' >> index.html
-         # curl http://169.254.169.254/latest/meta-data/public-ipv4 >> index.html
-         # echo "<br><b> Your DNS Address is: </b>"$'\r' >> index.html
-         # curl http://169.254.169.254/latest/meta-data/public-hostname >> index.html
-  WebserverSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
+          Value: 'The Name'
+          PropagateAtLaunch: 'true'
+  XYZLaunchConfiguration:
+    Type: 'AWS::AutoScaling::LaunchConfiguration'
     Properties:
-      GroupDescription: Enable Port 80
-      Tags:
-      - Key: Name
-        Value: webserver-sg
-      SecurityGroupIngress:
-      - IpProtocol: tcp
-        FromPort: 80
-        ToPort: 80
-        CidrIp: 0.0.0.0/0
+      AssociatePublicIpAddress: 'false'
+      PlacementTenancy: default
+      KeyName: !Ref KeyPairName
+      ImageId: ami-123432164a1b23da1
+      IamInstanceProfile: "BaseInstanceProfile"
+      InstanceType: t2.small
+
+      SecurityGroups:
+        - Fn::If: [CreateDevResources, !Ref DevSecurityGroup, !Ref "AWS::NoValue"]
