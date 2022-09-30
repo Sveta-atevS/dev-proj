@@ -1,0 +1,13 @@
+name: Create server with website
+hosts: localhost
+connection: local 
+geather_facts: 
+var_files: 
+   group_vars/env
+vars:
+    ansible_host_key_checking:
+    ansible_python_interpreter: /usr/bin/python3
+    
+tasks:
+   name: create VPC
+   e
