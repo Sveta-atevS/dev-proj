@@ -1,6 +1,6 @@
-FROM node:16
-WORKDIR /usr/src/app
-RUN npm install express
-COPY server.js .
-EXPOSE 80
-CMD [ "node", "server.js" ]
+version: "3.3"
+services:
+  web:
+    container_name: dev-dev
+    environment: atevs/dev-dev:latest
+    ports: "80:3000"
